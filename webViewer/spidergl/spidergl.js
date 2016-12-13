@@ -390,6 +390,7 @@ SglImageRequest.prototype._send = function() {
 	if (!this._url) return false;
 
 	var img = new Image();
+	img.crossOrigin = '';
 	this._img = img;
 
 	var cb = this._createOnReadyCallback();
@@ -4308,6 +4309,7 @@ function sglTexture2DFromUrl(gl, url, options) {
 	var obj = new SglTextureInfo();
 
 	var img = new Image();
+	img.crossOrigin = '';
 	img.onload = function() {
 		var texInfo = sglTexture2DFromImage(gl, img, opt);
 		for (var a in texInfo) {
@@ -4444,6 +4446,7 @@ function sglTextureCubeFromUrls(gl, urls, options) {
 	var images = new Array(6);
 	for (var i=0; i<6; ++i) {
 		images[i] = new Image();
+		images[i].crossOrigin = '';
 	}
 	var watcher = function() {
 		remaining--;
