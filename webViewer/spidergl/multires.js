@@ -26,7 +26,7 @@
 /*  along with this program.  If not, see <http://www.gnu.org/licenses/> */
 /*************************************************************************/
 
-function createRtiViewer(idDiv, imageUrl, width, height)
+function createRtiViewer(idDiv, imageUrlOrFunction, width, height)
 {
 	var canvasHeight = height;
 	var canvasWidth = width;
@@ -85,7 +85,7 @@ function createRtiViewer(idDiv, imageUrl, width, height)
 	divHelp.style.color = "#FFFFFF";
 	divHelp.style.backgroundColor="rgba(0, 0, 0, 0.9)";
 
-	divHelp.innerHTML = '<div id = "guideTable"><div id = "guideCell"> <div id = "guideList"><h3>WebRTIViewer<br/></h3><ul><li>Pan: LeftMouseButton + MouseMove.</li><li>Zoom in: MouseWhell or press the button <span><img src = "css/icons/zoomin.png" alt=""/></span></li><li>Zoom out: MouseWheel or press the button <span><img src = "css/icons/zoomout.png" alt=""/></span></li><li>To change the light direction: activate the light with the button <span><img src = "css/icons/light.png" alt=""/></span> and press LeftMouseButton + MouseMove or Ctrl + LeftMouseButton + MouseMove.</li><li>Fullscreen: press the button <span><img src = "css/icons/full.png" alt=""/></span> to active the fullscreen mode and the button <span><img src = "css/icons/full_on.png" alt=""/></span> to exit</li><li>To reset the viewpoint: press R.</li></ul><a href="http://vcg.isti.cnr.it/rti/webviewer.php" target = "_black">Visual Computing Lab ISTI CNR Pisa</a></div></div></div>'
+	divHelp.innerHTML = '<div id = "guideTable"><div id = "guideCell"> <div id = "guideList"><h3>WebRTIViewer<br/></h3><ul><li>Pan: LeftMouseButton + MouseMove.</li><li>Zoom in: MouseWhell or press the button <span><img src = "/assets/webViewer/css/icons/zoomin.png" alt=""/></span></li><li>Zoom out: MouseWheel or press the button <span><img src = "/assets/webViewer/css/icons/zoomout.png" alt=""/></span></li><li>To change the light direction: activate the light with the button <span><img src = "/assets/webViewer/css/icons/light.png" alt=""/></span> and press LeftMouseButton + MouseMove or Ctrl + LeftMouseButton + MouseMove.</li><li>Fullscreen: press the button <span><img src = "/assets/webViewer/css/icons/full.png" alt=""/></span> to active the fullscreen mode and the button <span><img src = "/assets/webViewer/css/icons/full_on.png" alt=""/></span> to exit</li><li>To reset the viewpoint: press R.</li></ul><a href="http://vcg.isti.cnr.it/rti/webviewer.php" target = "_black">Visual Computing Lab ISTI CNR Pisa</a></div></div></div>'
 	divHelp.style.display = "none";
 	canvasNode.append(divHelp);
 
@@ -113,7 +113,7 @@ function createRtiViewer(idDiv, imageUrl, width, height)
 	  label: "Light Off"
     }).click(function(){
 		var options;
-		if ( $( this ).text() == "Light Off" ) 
+		if ( $.trim($( this ).text()) == "Light Off" ) 
 		{
 			options = {
 				label: "Light On",
@@ -254,7 +254,14 @@ function createRtiViewer(idDiv, imageUrl, width, height)
 	{
 		divError.innerHTML = '';
 		var multiResRTI = new MultiRes(canvasName);
-		multiResRTI.setImageUrl(imageUrl);
+		if($.type(imageUrlOrFunction) === "string") {
+
+			multiResRTI.setImageUrl(imageUrlOrFunction);	
+		}
+		else {
+			multiResRTI.setImageFunction(imageUrlOrFunction);
+		}
+
 		function isRelitable(type){
 			if (type ==  "IMAGE")
 			{
@@ -287,6 +294,7 @@ function MultiRes(canvas)
 	this.animating = false;
 	this.moveToCenter = false;
 	this.imageUrl = "";
+	this.imageFunction = null;
 	this.OnLoadImageCallback = null;
 
 	this.currentSpeed = 0.0;
@@ -348,9 +356,14 @@ MultiRes.prototype = {
 		this.OnLoadImageCallback = callback;
 	},
 
+	setOnLoadImageCallback: function(callback)
+	{
+		this.OnLoadImageCallback = callback;
+	},
+
 	load : function(gl)
 	{
-		log("SpiderGL Version : " + SGL_VERSION_STRING + "\n");
+		log("/assets/webViewer/spidergl Version : " + SGL_VERSION_STRING + "\n");
 
 		/*************************************************************/
 		this.xform  = new SglTransformStack();
@@ -363,6 +376,8 @@ MultiRes.prototype = {
 		this.flipMatrix = sglIdentityM4();
 		if (this.imageUrl != "")
 			this.loadImage(this.imageUrl);
+		else if(this.imageFunction !== null)
+			this.loadImage(this.imageFunction);
 	},
 
 
@@ -1253,8 +1268,8 @@ function MultiResRenderer(gl, cacheSizeInBytes, onLoad)
 
 	// box rendering
 	/******************************************************/
-	var bvs = sglLoadFile("spidergl/box.v.glsl");
-	var bfs = sglLoadFile("spidergl/box.f.glsl");
+	var bvs = sglLoadFile("/assets/webViewer/spidergl/box.v.glsl");
+	var bfs = sglLoadFile("/assets/webViewer/spidergl/box.f.glsl");
 	var bprg = new SglProgram(gl, [bvs], [bfs]);
 	log(bprg.log);
 
@@ -1355,7 +1370,15 @@ MultiResRenderer.prototype = {
 	loadImage: function(url)
 	{
 		var xhttp=new XMLHttpRequest();
-		xhttp.open("GET", url + "/info.xml", false);
+		var targetURL = null;
+		if(typeof url === "string") {
+			targetURL = url + "/info.xml";
+		}
+		else {
+			targetURL = url("/info.xml");
+		}
+		xhttp.overrideMimeType('text/xml');
+		xhttp.open("GET", targetURL, false);
 		xhttp.send();
 		var doc = xhttp.responseXML;
 		this.format = "jpg";
@@ -1439,29 +1462,29 @@ MultiResRenderer.prototype = {
 		switch (this.enumType[this.type])
 		{
 			case 1:
-				var vs = sglLoadFile("spidergl/multi.v.glsl");
-				var fs = sglLoadFile("spidergl/hsh.f.glsl");
+				var vs = sglLoadFile("/assets/webViewer/spidergl/multi.v.glsl");
+				var fs = sglLoadFile("/assets/webViewer/spidergl/hsh.f.glsl");
 				var prg = new SglProgram(this.gl, [vs], [fs]);
 				log(prg.log);
 				this._program  = prg;
 				break;
 			case 2:
-				var vs = sglLoadFile("spidergl/multi.v.glsl");
-				var fs = sglLoadFile("spidergl/lrgbptm.f.glsl");
+				var vs = sglLoadFile("/assets/webViewer/spidergl/multi.v.glsl");
+				var fs = sglLoadFile("/assets/webViewer/spidergl/lrgbptm.f.glsl");
 				var prg = new SglProgram(this.gl, [vs], [fs]);
 				log(prg.log);
 				this._program  = prg;
 				break;
 			case 3:
-				var vs = sglLoadFile("spidergl/multi.v.glsl");
-				var fs = sglLoadFile("spidergl/rgbptm.f.glsl");
+				var vs = sglLoadFile("/assets/webViewer/spidergl/multi.v.glsl");
+				var fs = sglLoadFile("/assets/webViewer/spidergl/rgbptm.f.glsl");
 				var prg = new SglProgram(this.gl, [vs], [fs]);
 				log(prg.log);
 				this._program  = prg;
 				break;
 			case 4:
-				var vs = sglLoadFile("spidergl/multi.v.glsl");
-				var fs = sglLoadFile("spidergl/image.f.glsl");
+				var vs = sglLoadFile("/assets/webViewer/spidergl/multi.v.glsl");
+				var fs = sglLoadFile("/assets/webViewer/spidergl/image.f.glsl");
 				var prg = new SglProgram(this.gl, [vs], [fs]);
 				log(prg.log);
 				this._program  = prg;
@@ -1685,9 +1708,26 @@ MultiResRenderer.prototype = {
 		if (n.req) return;
 
 		var that  = this;
+		if(typeof this._url === "string") {
+
+			var url   = this._url + "/" + n.id;	
+		}
+		
 		var url   = this._url + "/" + n.id;
 
 		var requests = new Array();
+
+		for (var i = 1; i <= this.numLayers; i++) {
+
+			if(typeof this._url === "string") {
+				var targetURL   = url + "_" + i + "." + this.format;	
+			}
+			else {
+				var targetURL = this._url("/" + n.id + "_" + i + "." + this.format)
+			}
+		
+			requests.push(new SglImageRequest(targetURL));
+		}
 
 		for (var i = 1; i <= this.numLayers; i++)
 			requests.push(new SglImageRequest(url + "_" + i + "." + this.format));
